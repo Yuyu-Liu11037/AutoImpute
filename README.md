@@ -7,6 +7,7 @@ The input to `AutoImpute.py` is a pre-processed count single cell matrix, with c
 ```
 conda create -n AutoImpute python=3.10
 source activate AutoImpute
+conda install pytorch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 pytorch-cuda=12.1 -c pytorch -c nvidia
 pip install anndata scanpy leidenalg tensorflow
 ```
 
@@ -16,12 +17,6 @@ pip install gdown
 gdown https://drive.google.com/uc?id=1raqlykXvm5wHjam1Up0SHYT-7gq7coz4
 gdown https://drive.google.com/uc?id=1pilLsl2N1HX_US_Y6X6eAwmXaPso_1Mu
 ```
-
-## Contents
-* `AutoImpute\ Model/AutoImpute.py` - is the AutoImpute imputation model.
-* `AutoImpute\ Model/data/raw` - contains the raw data in `.csv` format.
-* `AutoImpute\ Model/data/` - contains the pre-processed data in `<dataset_name>.{mat, csv}` format.
-* `AutoImpute\ Model/Pre-processing/` - contains the R scripts for pre-processing.
 
 ## Execution
 * To run the `AutoImpute` model, first change your directory to `AutoImpute\ Model` using the following command :
@@ -48,4 +43,4 @@ Options :
 		--load_saved False # flag to indicate if a saved model will be loaded.
 		--imputed_save imputed_matrix 	# Save the imputed matrix as
 		--masked_save masked_matrix 	# Save the masked matrix as
-
+```
