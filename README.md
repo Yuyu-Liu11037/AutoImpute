@@ -1,24 +1,20 @@
 AutoImpute: Autoencoder based imputation of single cell RNA-seq data
-================
-Divyanshu Talwar, Aanchal Mongia, Debarka Sengupta, and Angshul Majumdar
-
-## Introduction
-`AutoImpute` is an auto-encoder based gene-expression (sparse) matrix imputation.
-
-For detailed information refer to our paper titled "[AutoImpute : Autoencoder based imputation of single cell RNA-seq data](https://www.nature.com/articles/s41598-018-34688-x)".
-
--	For technical problems, please report to [Issues](https://github.com/divyanshu-talwar/AutoImpute/issues).
 
 ## Description
-The input to `AutoImpute.py` is a pre-processed count single cell matrix, with columns representing genes and rows representing cells. It's output is an imputed count matrix with the same dimension. The complete pipeline is described with the following image : 
+The input to `AutoImpute.py` is a pre-processed count single cell matrix, with columns representing genes and rows representing cells. It's output is an imputed count matrix with the same dimension. 
 
-![AutoImpute-Pipeline](./images/pipeline.jpg).
+## Environment
+```
+conda create -n AutoImpute python=3.10
+pip install anndata scanpy leidenalg tensorflow
+```
 
-## Dependencies
-* For Python (2.7):
-    > numpy, scikit-learn, tensorflow, matplotlib.
-* For R (pre-processing):
-	> R.matlab, Matrix, ggplot2, Rtsne, svd, plyr, dplyr, data.table, mclust, flexclust, reshape2, irlba, dynamicTreeCut, RColorBrewer, GenSA, gplots
+## Data
+```
+pip install gdown
+gdown https://drive.google.com/uc?id=1raqlykXvm5wHjam1Up0SHYT-7gq7coz4
+gdown https://drive.google.com/uc?id=1pilLsl2N1HX_US_Y6X6eAwmXaPso_1Mu
+```
 
 ## Contents
 * `AutoImpute\ Model/AutoImpute.py` - is the AutoImpute imputation model.
@@ -64,17 +60,4 @@ Rscript pre-process.R <input-file-name> <dataset-name>
 ```bash
 Rscript pre-process.R Blakeley_raw_data.csv blakeley
 ```
-## How to cite
-```
-@article{talwar2018autoimpute,
-  title={AutoImpute: Autoencoder based imputation of single-cell RNA-seq data},
-  author={Talwar, Divyanshu and Mongia, Aanchal and Sengupta, Debarka and Majumdar, Angshul},
-  journal={Scientific Reports},
-  volume={8},
-  number={1},
-  pages={16329},
-  year={2018},
-  publisher={Nature Publishing Group},
-  DOI = "https://doi.org/10.1038/s41598-018-34688-x"
-}
 ```

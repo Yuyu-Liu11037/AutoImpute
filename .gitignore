@@ -102,3 +102,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+AutoImpute Model/data/
+AutoImpute Model/checkpoints/

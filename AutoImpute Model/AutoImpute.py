@@ -1,4 +1,3 @@
-from __future__ import division, print_function, absolute_import
 import os
 import argparse
 import datetime
@@ -29,7 +28,7 @@ parser.add_argument('--threshold', type=int, default=0.0001,
 
 # Data
 parser.add_argument('--data', type=str, default='blakeley.csv',
-                    help="Dataset to run the script on. In the paper we choose from : ['blakeley.csv', 'jurkat-293T.mat', 'kolodziejczyk.csv', 'PBMC.csv', 'preimplantation.mat', 'quake.csv', 'usoskin.csv', 'zeisel.csv']")
+                    help="Dataset to run the script on.")
 
 # Run the masked matrix recovery test
 parser.add_argument('--masked_matrix_test', type=bool, default=False, nargs='+',
@@ -72,14 +71,12 @@ if __name__ == '__main__':
             processed_count_matrix = processed_count_matrix.toarray()
             processed_count_matrix = np.array(processed_count_matrix)
         else:
-            print("[!data read] Reading from data/" + FLAGS.data)
-            with open("data/" + FLAGS.data) as f:
+            print("[!data read] Reading from ./data/" + FLAGS.data)
+            with open("./data/" + FLAGS.data) as f:
                 ncols = len(f.readline().split(','))
-            processed_count_matrix = np.loadtxt(open("data/" + FLAGS.data, "rb"), delimiter=",", skiprows=1,
-                                                usecols=range(1, ncols + 1))
+            processed_count_matrix = np.loadtxt(open("./data/" + FLAGS.data, "rb"), delimiter=",", skiprows=1, usecols=range(1, ncols))
     except Exception as e:
-        print(
-            "[!data read] Error: {e}}")
+        print(f"[!data read] Error: {e}")
         exit()
 
     dataset = FLAGS.data.split('.')[0]
@@ -109,106 +106,73 @@ if __name__ == '__main__':
     # finding number of genes and cells.
     genes = processed_count_matrix.shape[1]
     cells = processed_count_matrix.shape[0]
-    print("[info] Genes : {0}, Cells : {1}".format(genes, cells))
+    print(f"[info] Genes : {genes}, Cells : {cells}")
 
-    # placeholder definitions
-    X = tf.placeholder("float32", [None, genes])
-    mask = tf.placeholder("float32", [None, genes])
-
+    # Model definition with TensorFlow 2.x
     matrix_mask = processed_count_matrix.copy()
     matrix_mask[matrix_mask.nonzero()] = 1
+    X = tf.convert_to_tensor(processed_count_matrix, dtype=tf.float32)
+    mask = tf.convert_to_tensor(matrix_mask, dtype=tf.float32)
 
-    print("[info] Hyper-parameters")
-    print("\t Hidden Units : " + str(FLAGS.hidden_units))
-    print("\t Lambda : {0}".format(FLAGS.lambda_val))
-    print("\t Threshold : " + str(FLAGS.threshold))
-    print("\t Iterations : " + str(FLAGS.iterations))
-    print("\t Initial learning rate : " + str(FLAGS.initial_learning_rate))
-
-    # model definition
     weights = {
-        'encoder_h': tf.Variable(tf.random_normal([genes, FLAGS.hidden_units])),
-        'decoder_h': tf.Variable(tf.random_normal([FLAGS.hidden_units, genes])),
+        'encoder_h': tf.Variable(tf.random.normal([genes, FLAGS.hidden_units])),
+        'decoder_h': tf.Variable(tf.random.normal([FLAGS.hidden_units, genes])),
     }
     biases = {
-        'encoder_b': tf.Variable(tf.random_normal([FLAGS.hidden_units])),
-        'decoder_b': tf.Variable(tf.random_normal([genes])),
+        'encoder_b': tf.Variable(tf.random.normal([FLAGS.hidden_units])),
+        'decoder_b': tf.Variable(tf.random.normal([genes])),
     }
-
 
     def encoder(x):
         layer_1 = tf.nn.sigmoid(tf.add(tf.matmul(x, weights['encoder_h']), biases['encoder_b']))
         return layer_1
 
-
     def decoder(x):
         layer_1 = tf.add(tf.matmul(x, weights['decoder_h']), biases['decoder_b'])
         return layer_1
 
+    # Loss and optimization with TensorFlow 2.x
+    optimizer = tf.optimizers.RMSprop(FLAGS.initial_learning_rate)
 
-    encoder_op = encoder(X)
-    decoder_op = decoder(encoder_op)
+    @tf.function
+    def compute_loss(X, mask):
+        encoded = encoder(X)
+        decoded = decoder(encoded)
+        rmse_loss = tf.reduce_sum(tf.square((X - decoded) * mask))
+        regularization = (FLAGS.lambda_val / 2.0) * (
+            tf.reduce_sum(tf.square(weights['decoder_h'])) +
+            tf.reduce_sum(tf.square(weights['encoder_h']))
+        )
+        total_loss = rmse_loss + regularization
+        return total_loss
 
-    # loss definition
-    y_pred = decoder_op
-    y_true = X
-    rmse_loss = tf.pow(tf.norm(y_true - y_pred * mask), 2)
-    regularization = tf.multiply(tf.constant(FLAGS.lambda_val / 2.0, dtype="float32"),
-                                 tf.add(tf.pow(tf.norm(weights['decoder_h']), 2),
-                                        tf.pow(tf.norm(weights['encoder_h']), 2)))
-    loss = tf.add(tf.reduce_mean(rmse_loss), regularization)
-    optimizer = tf.train.RMSPropOptimizer(FLAGS.initial_learning_rate).minimize(loss)
+    @tf.function
+    def train_step(X, mask):
+        with tf.GradientTape() as tape:
+            loss = compute_loss(X, mask)
+        grads = tape.gradient(loss, [weights['encoder_h'], weights['decoder_h'], biases['encoder_b'], biases['decoder_b']])
+        optimizer.apply_gradients(zip(grads, [weights['encoder_h'], weights['decoder_h'], biases['encoder_b'], biases['decoder_b']]))
+        return loss
 
-    init = tf.global_variables_initializer()
+    # Training loop
+    prev_loss = 0
+    for k in range(1, FLAGS.iterations + 1):
+        loss = train_step(X, mask)
+        lpentry = loss / cells
+        change = abs(prev_loss - lpentry)
+        if change <= FLAGS.threshold:
+            print("Reached the threshold value.")
+            break
+        prev_loss = lpentry
+        if FLAGS.debug:
+            if (k - 1) % FLAGS.debug_display_step == 0:
+                print(f'Step {k} : Total loss: {loss:.6f}, Loss per Cell : {lpentry:.6f}, Change : {change:.6f}')
+                with open(FLAGS.log_file, 'a') as log:
+                    log.write(f'{k}\t{loss:.6f}\t{lpentry:.6f}\t{change:.6f}\n')
 
-    saver = tf.train.Saver()
-
-    with tf.Session() as sess:
-        if FLAGS.load_saved:
-            saver.restore(sess, FLAGS.load_model_location)
-            print("[info] model restored.")
-        else:
-            sess.run(init)
-        prev_loss = 0
-        for k in range(1, FLAGS.iterations + 1):
-            _, loss = sess.run([optimizer, rmse_loss], feed_dict={X: processed_count_matrix, mask: matrix_mask})
-            lpentry = loss / cells
-            change = abs(prev_loss - lpentry)
-            if change <= FLAGS.threshold:
-                print("Reached the threshold value.")
-                break
-            prev_loss = lpentry
-            if FLAGS.debug:
-                if (k - 1) % FLAGS.debug_display_step == 0:
-                    print('Step %i : Total loss: %f, Loss per Cell : %f, Change : %f' % (k, loss, lpentry, change))
-                    with open(FLAGS.log_file, 'a') as log:
-                        log.write('{0}\t{1}\t{2}\t{3}\n'.format(
-                            k,
-                            loss,
-                            lpentry,
-                            change
-                        ))
-            if ((k - 1) % 5 == 0):
-                save_path = saver.save(sess, FLAGS.save_model_location)
-        imputed_count_matrix = sess.run([y_pred], feed_dict={X: processed_count_matrix, mask: matrix_mask})
-        scipy.io.savemat(FLAGS.imputed_save + ".mat", mdict={"arr": imputed_count_matrix})
-
-        if (FLAGS.masked_matrix_test):
-            predictions = []
-
-            for idx, value in enumerate(store_for_future):
-                prediction = imputed_count_matrix[0][indices[0][idx], indices[1][idx]]
-                predictions.append(prediction)
-
-    if (FLAGS.masked_matrix_test):
-        store_for_future = np.array(store_for_future)
-        predictions = np.array(predictions)
-
-        print("<------------------------------------Statistics for " + FLAGS.data.split('.')[
-            0] + " dataset------------------------------------>")
-        print("MAE = {0}".format(mean_absolute_error(store_for_future, predictions)))
-        print("RMSE = {0}".format(mean_squared_error(store_for_future, predictions) ** 0.5))
-        print("NMSE = {0}".format((np.linalg.norm(store_for_future - predictions) / np.linalg.norm(store_for_future))))
+    # Saving the final imputed matrix
+    imputed_count_matrix = decoder(encoder(X)).numpy()
+    scipy.io.savemat(FLAGS.imputed_save + ".mat", mdict={"arr": imputed_count_matrix})
 
     finish_time = datetime.datetime.now()
-    print("[info] Total time taken = {0}".format(finish_time - start_time))
+    print(f"[info] Total time taken = {finish_time - start_time}")
