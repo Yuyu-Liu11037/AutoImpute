@@ -1,4 +1,4 @@
-AutoImpute: Autoencoder based imputation of single cell RNA-seq data
+# AutoImpute: Autoencoder based imputation of single cell RNA-seq data
 
 ## Description
 The input to `AutoImpute.py` is a pre-processed count single cell matrix, with columns representing genes and rows representing cells. It's output is an imputed count matrix with the same dimension. 
@@ -6,6 +6,7 @@ The input to `AutoImpute.py` is a pre-processed count single cell matrix, with c
 ## Environment
 ```
 conda create -n AutoImpute python=3.10
+source activate AutoImpute
 pip install anndata scanpy leidenalg tensorflow
 ```
 
