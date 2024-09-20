@@ -27,7 +27,7 @@ gdown https://drive.google.com/uc?id=1pilLsl2N1HX_US_Y6X6eAwmXaPso_1Mu
 	* `cd AutoImpute\ Model`
 * `AutoImpute` model can be run using the following command and command line arguments :
 ```bash
-python AutoImpute.py
+python AutoImpute.py --data multiome_missing.csv --iterations 4000
 ```
 ```
 Options :
@@ -48,16 +48,3 @@ Options :
 		--imputed_save imputed_matrix 	# Save the imputed matrix as
 		--masked_save masked_matrix 	# Save the masked matrix as
 
-```
-_**Note:** If you use any other dataset (apart from blakeley.csv), do the necessary preprocessing using as described below, then run AutoImpute as `python AutoImpute.py --data <dataset_name>.{mat, csv}`._
-
-* To pre-process any dataset, place the raw data (in `.csv` format) into `AutoImpute\ Model/data/raw/` and change your directory to `AutoImpute\ Model/Pre-processing/`.
-* Run the R-script `pre-process.R` using the following command:
-```bash
-Rscript pre-process.R <input-file-name> <dataset-name>
-```
-* For example, the sample dataset can be pre-processed using the following command:
-```bash
-Rscript pre-process.R Blakeley_raw_data.csv blakeley
-```
-```
